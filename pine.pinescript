@@ -1,75 +1,3 @@
-//----------------------------------------}
-//Order Blocks
-//----------------------------------------{
-show_iob = input(true, 'Internal Order Blocks'
-  , inline = 'iob'
-  , group = 'Order Blocks'
-  , tooltip = INTERNAL_OB)
-
-iob_showlast = input.int(5, ''
-  , minval = 1
-  , inline = 'iob'
-  , group = 'Order Blocks')
-
-show_ob = input(false, 'Swing Order Blocks'
-  , inline = 'ob'
-  , group = 'Order Blocks'
-  , tooltip = SWING_OB)
-
-ob_showlast = input.int(5, ''
-  , minval = 1
-  , inline = 'ob'
-  , group = 'Order Blocks')
-
-ob_filter = input.string('Atr', 'Order Block Filter'
-  , options = ['Atr', 'Cumulative Mean Range']
-  , group = 'Order Blocks'
-  , tooltip = FILTER_OB)
-
-ibull_ob_css = input.color(color.new(#3179f5, 80), 'Internal Bullish OB'
-  , group = 'Order Blocks')
-
-ibear_ob_css = input.color(color.new(#f77c80, 80), 'Internal Bearish OB'
-  , group = 'Order Blocks')
-
-bull_ob_css = input.color(color.new(#1848cc, 80), 'Bullish OB'
-  , group = 'Order Blocks')
-
-bear_ob_css = input.color(color.new(#b22833, 80), 'Bearish OB'
-  , group = 'Order Blocks')
-
-
-//-----------------------------------------------------------------------------}
-//Functions
-//-----------------------------------------------------------------------------{
-n = bar_index
-
-atr = ta.atr(200)
-cmean_range = ta.cum(high - low) / n
-
-//HL Output function
-hl() => [high, low]
-
-//Get ohlc values function
-get_ohlc()=> [close[1], open[1], high, low, high[2], low[2]]
-
-//Display Structure function
-display_Structure(x, y, txt, css, dashed, down, lbl_size)=>
-    structure_line = line.new(x, y, n, y
-      , color = css
-      , style = dashed ? line.style_dashed : line.style_solid)
-
-    structure_lbl = label.new(int(math.avg(x, n)), y, txt
-      , color = TRANSP_CSS
-      , textcolor = css
-      , style = down ? label.style_label_down : label.style_label_up
-      , size = lbl_size)
-
-    if mode == 'Present'
-        line.delete(structure_line[1])
-        label.delete(structure_lbl[1])
-
-//Swings detection/measurements
 swings(len)=>
     var os = 0
     
@@ -139,63 +67,81 @@ display_ob(boxes, target_top, target_btm, target_left, target_type, show_last, s
             
             box.set_border_color(get_box, css)
             box.set_bgcolor(get_box, css)
-        
-//Line Style function
-get_line_style(style) =>
-    out = switch style
-        '⎯⎯⎯'  => line.style_solid
-        '----' => line.style_dashed
-        '····' => line.style_dotted
 
-
-//-----------------------------------------------------------------------------}
-//Global variables
-//-----------------------------------------------------------------------------{
-var trend = 0, var itrend = 0
 
 var top_y = 0., var top_x = 0
 var btm_y = 0., var btm_x = 0
-
 var itop_y = 0., var itop_x = 0
 var ibtm_y = 0., var ibtm_x = 0
-
-var trail_up = high, var trail_dn = low
-var trail_up_x = 0,  var trail_dn_x = 0
-
 var top_cross = true,  var btm_cross = true
 var itop_cross = true, var ibtm_cross = true
 
-var txt_top = '',  var txt_btm = ''
-
-
-//Labels size
-var internal_structure_lbl_size = internal_structure_size == 'Tiny' 
-  ? size.tiny 
-  : internal_structure_size == 'Small' 
-  ? size.small 
-  : size.normal 
-
-var swing_structure_lbl_size = swing_structure_size == 'Tiny' 
-  ? size.tiny 
-  : swing_structure_size == 'Small' 
-  ? size.small 
-  : size.normal 
-
-var eqhl_lbl_size = eq_size == 'Tiny' 
-  ? size.tiny 
-  : eq_size == 'Small' 
-  ? size.small
-  : size.normal 
-
-//Swings
 [top, btm] = swings(length)
-
 [itop, ibtm] = swings(5)
 
+if top
+    top_cross := true
+    txt_top := top > top_y ? 'HH' : 'LH'
 
-//-----------------------------------------------------------------------------}
-//Order Blocks Arrays
-//-----------------------------------------------------------------------------{
+    if show_swings
+        top_lbl = label.new(n-length, top, txt_top
+          , color = TRANSP_CSS
+          , textcolor = bear_css
+          , style = label.style_label_down
+          , size = swing_structure_lbl_size)
+
+        if mode == 'Present'
+            label.delete(top_lbl[1])
+
+    //Extend recent top to last bar
+    line.delete(extend_top[1])
+    extend_top := line.new(n-length, top, n, top
+      , color = bear_css)
+
+    top_y := top
+    top_x := n - length
+
+    trail_up := top
+    trail_up_x := n - length
+
+if itop
+    itop_cross := true
+
+    itop_y := itop
+    itop_x := n - 5
+
+
+if btm
+    btm_cross := true
+    txt_btm := btm < btm_y ? 'LL' : 'HL'
+    
+    if show_swings
+        btm_lbl = label.new(n - length, btm, txt_btm
+          , color = TRANSP_CSS
+          , textcolor = bull_css
+          , style = label.style_label_up
+          , size = swing_structure_lbl_size)
+
+        if mode == 'Present'
+            label.delete(btm_lbl[1])
+    
+    //Extend recent btm to last bar
+    line.delete(extend_btm[1])
+    extend_btm := line.new(n - length, btm, n, btm
+      , color = bull_css)
+
+    btm_y := btm
+    btm_x := n-length
+
+    trail_dn := btm
+    trail_dn_x := n-length
+
+if ibtm
+    ibtm_cross := true
+
+    ibtm_y := ibtm
+    ibtm_x := n - 5
+
 var iob_top = array.new_float(0)
 var iob_btm = array.new_float(0)
 var iob_left = array.new_int(0)
@@ -206,66 +152,92 @@ var ob_btm = array.new_float(0)
 var ob_left = array.new_int(0)
 var ob_type = array.new_int(0)
 
+if ta.crossover(close, itop_y) and itop_cross and top_y != itop_y and bull_concordant
+    bool choch = na
+    
+    if itrend < 0
+        choch := true
+        bull_ichoch_alert := true
+    else 
+        bull_ibos_alert := true
+    
+    txt = choch ? 'CHoCH' : 'BOS'
 
-//-----------------------------------------------------------------------------}
-//Order Blocks
-//-----------------------------------------------------------------------------{
-//Set order blocks
-var iob_boxes = array.new_box(0)
-var ob_boxes = array.new_box(0)
-
-//Delete internal order blocks box coordinates if top/bottom is broken
-for element in iob_type
-    index = array.indexof(iob_type, element)
-
-    if close < array.get(iob_btm, index) and element == 1
-        array.remove(iob_top, index) 
-        array.remove(iob_btm, index) 
-        array.remove(iob_left, index) 
-        array.remove(iob_type, index)
-        bull_iob_break := true
-
-    else if close > array.get(iob_top, index) and element == -1
-        array.remove(iob_top, index) 
-        array.remove(iob_btm, index)
-        array.remove(iob_left, index) 
-        array.remove(iob_type, index)
-        bear_iob_break := true
-
-//Delete internal order blocks box coordinates if top/bottom is broken
-for element in ob_type
-    index = array.indexof(ob_type, element)
-
-    if close < array.get(ob_btm, index) and element == 1
-        array.remove(ob_top, index) 
-        array.remove(ob_btm, index) 
-        array.remove(ob_left, index) 
-        array.remove(ob_type, index)
-        bull_ob_break := true
-
-    else if close > array.get(ob_top, index) and element == -1
-        array.remove(ob_top, index) 
-        array.remove(ob_btm, index)
-        array.remove(ob_left, index) 
-        array.remove(ob_type, index)
-        bear_ob_break := true
-
-iob_size = array.size(iob_type)
-ob_size = array.size(ob_type)
-
-if barstate.isfirst
+    if show_internals
+        if show_ibull == 'All' or (show_ibull == 'BOS' and not choch) or (show_ibull == 'CHoCH' and choch)
+            display_Structure(itop_x, itop_y, txt, ibull_css, true, true, internal_structure_lbl_size)
+    
+    itop_cross := false
+    itrend := 1
+    
+    //Internal Order Block
     if show_iob
-        for i = 0 to iob_showlast-1
-            array.push(iob_boxes, box.new(na,na,na,na, xloc = xloc.bar_time))
+        ob_coord(false, itop_x, iob_top, iob_btm, iob_left, iob_type)
+
+//Detect bullish Structure
+if ta.crossover(close, top_y) and top_cross
+    bool choch = na
+    
+    if trend < 0
+        choch := true
+        bull_choch_alert := true
+    else 
+        bull_bos_alert := true
+
+    txt = choch ? 'CHoCH' : 'BOS'
+    
+    if show_Structure
+        if show_bull == 'All' or (show_bull == 'BOS' and not choch) or (show_bull == 'CHoCH' and choch)
+            display_Structure(top_x, top_y, txt, bull_css, false, true, swing_structure_lbl_size)
+    
+    //Order Block
     if show_ob
-        for i = 0 to ob_showlast-1
-            array.push(ob_boxes, box.new(na,na,na,na, xloc = xloc.bar_time))
+        ob_coord(false, top_x, ob_top, ob_btm, ob_left, ob_type)
 
-if iob_size > 0
-    if barstate.islast
-        display_ob(iob_boxes, iob_top, iob_btm, iob_left, iob_type, iob_showlast, false, iob_size)
+    top_cross := false
+    trend := 1
 
-if ob_size > 0
-    if barstate.islast
-        display_ob(ob_boxes, ob_top, ob_btm, ob_left, ob_type, ob_showlast, true, ob_size)
+if ta.crossunder(close, ibtm_y) and ibtm_cross and btm_y != ibtm_y and bear_concordant
+    bool choch = false
+    
+    if itrend > 0
+        choch := true
+        bear_ichoch_alert := true
+    else 
+        bear_ibos_alert := true
+    
+    txt = choch ? 'CHoCH' : 'BOS'
 
+    if show_internals
+        if show_ibear == 'All' or (show_ibear == 'BOS' and not choch) or (show_ibear == 'CHoCH' and choch)
+            display_Structure(ibtm_x, ibtm_y, txt, ibear_css, true, false, internal_structure_lbl_size)
+    
+    ibtm_cross := false
+    itrend := -1
+    
+    //Internal Order Block
+    if show_iob
+        ob_coord(true, ibtm_x, iob_top, iob_btm, iob_left, iob_type)
+
+//Detect bearish Structure
+if ta.crossunder(close, btm_y) and btm_cross
+    bool choch = na
+    
+    if trend > 0
+        choch := true
+        bear_choch_alert := true
+    else 
+        bear_bos_alert := true
+
+    txt = choch ? 'CHoCH' : 'BOS'
+    
+    if show_Structure
+        if show_bear == 'All' or (show_bear == 'BOS' and not choch) or (show_bear == 'CHoCH' and choch)
+            display_Structure(btm_x, btm_y, txt, bear_css, false, false, swing_structure_lbl_size)
+    
+    //Order Block
+    if show_ob
+        ob_coord(true, btm_x, ob_top, ob_btm, ob_left, ob_type)
+
+    btm_cross := false
+    trend := -1
