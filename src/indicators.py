@@ -69,7 +69,7 @@ def VWAP2(df: pd.DataFrame, band):
     elif band == 6:
         return pd.Series(lower_band3_list)
 
-def get_supertrend(data, lookback=10, multiplier=2.5, band=0):
+def supertrend(data, lookback=10, multiplier=2.5, band=0):
     high = data["High"]
     low = data["Low"]
     close = data["Close"]
