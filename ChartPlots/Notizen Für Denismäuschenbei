@@ -2,3 +2,5 @@ stoploss fixen, teilweise sind die verluste pro trade zu hoch, darf eigentlich n
 bei gelegenheit mal einen aktuelle datei nicht nur auf london session sondern auch ny session laufen lassen 
 longs vs shorts verggleichen 
 asisa session und ny session evt 
+Gedank für Trendfiltern WaveTrend3D Tradingview indikator mirror=on; timeframe=1H um den trend zu identifizieren für den niedrigeren Timeframe
+wichtig ist nur die Große Welle des Indikators um das interpretieren zu erleichtern
