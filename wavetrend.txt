@@ -1,0 +1,37 @@
+// Oscillator Settings
+offset = input.int(0, "Oscillator Separation Distance", group="Oscillators", tooltip="Separates the signal from the source by the specified number of bars. Useful for examining an oscillator in isolation and directly comparing to other timeframes.", inline="toggleOsc")
+s_length = input.float(1.75, "Slow Length:", step=0.05, tooltip="Length scale factor for the slow oscillator.", inline="slow", group="Oscillators")
+s_smoothing = input.float(2.5, "Smoothing:", step=0.05, tooltip="Smoothing scale factor for the slow frequency.", inline="slow", group="Oscillators")
+
+normalizeDeriv(_src, _quadraticMeanLength) =>
+    float derivative = _src - _src[2]
+    quadraticMean = math.sqrt(nz(math.sum(math.pow(derivative, 2), _quadraticMeanLength) / _quadraticMeanLength))
+    derivative/quadraticMean
+
+tanh(series float _src) =>
+    -1 + 2/(1 + math.exp(-2*_src))
+
+dualPoleFilter(float _src, float _lookback) =>
+    float _omega = -99 * math.pi / (70 * _lookback)
+    float _alpha = math.exp(_omega)
+    float _beta = -math.pow(_alpha, 2)
+    float _gamma = math.cos(_omega) * 2 * _alpha
+    float _delta = 1 - _gamma - _beta
+    float _slidingAvg = 0.5 * (_src + nz(_src[1], _src))
+    float _filter = na
+    _filter := (_delta*_slidingAvg) + _gamma*nz(_filter[1]) + _beta*nz(_filter[2])
+    _filter
+
+getOscillator(float src, float smoothingFrequency, int quadraticMeanLength) =>   
+    nDeriv = normalizeDeriv(src, quadraticMeanLength)
+    hyperbolicTangent = tanh(nDeriv)
+    result = dualPoleFilter(hyperbolicTangent, smoothingFrequency)
+
+
+// Slow Oscillator + Mirror
+offsetSlow = -offset
+s_lookback = s_smoothing * oscillatorLookback
+signalSlow = getOscillator(src, s_lookback, quadraticMeanLength)
+seriesSlow = s_length*signalSlow+offsetSlow
+seriesSlowMirror = useMirror ? -seriesSlow + 2*offsetSlow : na
+

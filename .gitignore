@@ -1,3 +1,6 @@
 api_key.ini
 
 data_directory/
+
+__pycache__/
+
