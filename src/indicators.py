@@ -176,21 +176,42 @@ def smc(data, length, band):
     data["btmm"].replace(0, np.nan, inplace=True)
     data["topp"] = swings_data_top
     data["topp"].replace(0, np.nan, inplace=True)
+
+    fill1 = data["btmm"].fillna(method='ffill')
+    fill2 = data["topp"].fillna(method='ffill')
+
     if(band==0):
-        return data["btmm"]
+        return fill1
     else:
-        return data["topp"]
+        return fill2
     
 
 # Wavetrend3D from tw
 
-def wavetrend3d(data: pd.Series, cog_window, timeframe):
+
+def wavetrend3d(data: pd.Series, cog_window, timeframe, mirror):
     s_length = 1.75
     timechange = data.resample(timeframe).agg({'Open': 'first', 'High': 'max', 'Low': 'min', 'Close': 'last', 'Volume': 'sum'})
+
+    # Store the original index
+    original_index = data.index
+
     signalSlow = getOscillator(cog(timechange["Close"], 6))
-    seriesSlow = s_length*signalSlow
+
+    # Create a DataFrame with the hourly data and original index
+    hourly_data = pd.DataFrame(signalSlow, index=timechange.index)
+
+    # Map the hourly data back to the original 3-minute index
+    seriesSlow = hourly_data.asof(original_index)
+    seriesSlow = s_length * seriesSlow.squeeze()
     seriesSlowMirror = -seriesSlow
-    return [seriesSlow, seriesSlowMirror]
+    seriesSlowret = seriesSlow.fillna(0)
+    seriesSlowretMirror = seriesSlowMirror.fillna(0)
+    if not mirror:
+        return seriesSlowret
+    elif mirror:
+        return seriesSlowretMirror
+    
 
 def cog(source, length):
     sum = source.rolling(length, min_periods=1).sum()
@@ -232,5 +253,6 @@ def getOscillator(data, smoothingFrequency=50, quadraticMeanLength=50):
     hyperbolicTangent = tanh(nDeriv)
     result = dualPoleFilter(hyperbolicTangent, smoothingFrequency)
     return result
+
 
 
