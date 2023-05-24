@@ -83,3 +83,17 @@ Damit installiert ihr alle libaries und jetzt müsst ihr mit folgenden Befehl di
 - conda activate pie
 
 Jetzt müsst ihr nurnoch den richtigen Kernel auswählen (pie) und schon sind wir fertig.
+
+git status
+
+Falls Änderung gemacht wurden:
+
+git add .
+git commit -m "Hab bisschen rumprobiert"
+git push 
+
+Changes zu euch holen:
+
+git pull origin main
+
+git branch 
