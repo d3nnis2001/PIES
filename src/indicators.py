@@ -2,15 +2,6 @@ import pandas as pd
 import numpy as np
 from datetime import datetime
 
-def atr(high, low, close, length=14):
-    tr = pd.DataFrame(index=high.index)
-    tr['h-l'] = high - low
-    tr['h-c'] = abs(high - close.shift())
-    tr['l-c'] = abs(low - close.shift())
-    tr['true_range'] = tr[['h-l', 'h-c', 'l-c']].max(axis=1)
-    atr = tr['true_range'].rolling(length).mean()
-    return atr
-
 def VWAP2(df: pd.DataFrame, band):
     # Group by date
     grouped = df.groupby(df.index.date)
