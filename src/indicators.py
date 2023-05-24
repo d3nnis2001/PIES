@@ -1,6 +1,7 @@
 import pandas as pd 
 import numpy as np
 from datetime import datetime
+import math
 
 def VWAP2(df: pd.DataFrame, band):
     # Group by date
@@ -179,3 +180,57 @@ def smc(data, length, band):
         return data["btmm"]
     else:
         return data["topp"]
+    
+
+# Wavetrend3D from tw
+
+def wavetrend3d(data: pd.Series, cog_window, timeframe):
+    s_length = 1.75
+    timechange = data.resample(timeframe).agg({'Open': 'first', 'High': 'max', 'Low': 'min', 'Close': 'last', 'Volume': 'sum'})
+    signalSlow = getOscillator(cog(timechange["Close"], 6))
+    seriesSlow = s_length*signalSlow
+    seriesSlowMirror = -seriesSlow
+    return [seriesSlow, seriesSlowMirror]
+
+def cog(source, length):
+    sum = source.rolling(length, min_periods=1).sum()
+    num = 0
+    for i in range(length):
+        price = source.shift(i).fillna(0)
+        num += price * (i + 1)
+    return -(num / sum).replace([np.inf, -np.inf], np.nan).fillna(0)
+
+def normalizeDeriv(src, quadraticMeanLength):
+    derivative = src - src.shift(2)  # Calculate the derivative
+    quadraticMean = np.sqrt(np.nan_to_num(np.sum(np.power(derivative, 2)) / quadraticMeanLength, nan=0))
+    normalizedDeriv = derivative / quadraticMean  # Calculate normalized derivative
+    series = pd.Series(index=src.index, data=normalizedDeriv*100)
+    return series
+
+def tanh(_src):
+    vals = -1 + 2/(1 + np.exp(-2*_src))
+    series = pd.Series(index=_src.index, data=vals)
+    return series
+
+def dualPoleFilter(_src, _lookback):
+    _omega = -99 * math.pi / (70 * _lookback)
+    _alpha = np.exp(_omega)
+    _beta = -np.power(_alpha, 2)
+    _gamma = np.cos(_omega) * 2 * _alpha
+    _delta = 1 - _gamma - _beta
+    _slidingAvg = 0.5 * (_src + np.nan_to_num(_src.shift(1), nan=_src[0]))
+    _filter = np.empty_like(_src)
+    _filter[0] = np.nan
+    
+    for i in range(1, len(_src)):
+        _filter[i] = (_delta * _slidingAvg[i]) + _gamma * np.nan_to_num(_filter[i-1], nan=0) + _beta * np.nan_to_num(_filter[i-2], nan=0)
+    series = pd.Series(_filter, index=_src.index)
+    return series
+
+def getOscillator(data, smoothingFrequency=50, quadraticMeanLength=50):
+    nDeriv = normalizeDeriv(data, quadraticMeanLength)
+    hyperbolicTangent = tanh(nDeriv)
+    result = dualPoleFilter(hyperbolicTangent, smoothingFrequency)
+    return result
+
+
