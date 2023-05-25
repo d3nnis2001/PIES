@@ -255,4 +255,18 @@ def getOscillator(data, smoothingFrequency=50, quadraticMeanLength=50):
     return result
 
 
+def atr(data):
+    high = data['High']
+    low = data['Low']
+    close = data['Close']
 
+    # Calculate True Range
+    tr = pd.Series(data=np.nan, index=data.index)
+    tr.iloc[0] = high.iloc[0] - low.iloc[0]
+    for i in range(1, len(data)):
+        tr.iloc[i] = max(high.iloc[i] - low.iloc[i], abs(high.iloc[i] - close.iloc[i-1]), abs(low.iloc[i] - close.iloc[i-1]))
+
+    # Calculate Average True Range
+    atr = tr.rolling(window=14).mean()
+
+    return atr
