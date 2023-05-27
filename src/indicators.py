@@ -155,23 +155,26 @@ def supertrend(data, lookback=10, multiplier=2.5, band=0):
     elif(band==1):
         return data["upt"]
     
-def swings(data, length):
-    upper = data['High'].rolling(window=length).max()
-    lower = data['Low'].rolling(window=length).min()
+def swings(data, length, timeframe):
+    resampled = data.resample(timeframe).agg({'Open': 'first', 'High': 'max', 'Low': 'min', 'Close': 'last', 'Volume': 'sum'})
+    upper = resampled['High'].rolling(window=length).max()
+    lower = resampled['Low'].rolling(window=length).min()
 
-    os = np.where(data['High'].shift(length) > upper, 0, np.where(data['Low'].shift(length) < lower, 1, np.nan))
+    os = np.where(resampled['High'].shift(length) > upper, 0, np.where(resampled['Low'].shift(length) < lower, 1, np.nan))
     os = pd.Series(os).fillna(method='ffill')
-    top = np.where((os == 0) & (os.shift() != 0), data['High'].shift(length), 0)
-    btm = np.where((os == 1) & (os.shift() != 1), data['Low'].shift(length), 0)
-    return [pd.Series(top).shift(-length), pd.Series(btm).shift(-length)]
+    top = np.where((os == 0) & (os.shift() != 0), resampled['High'].shift(length), 0)
+    btm = np.where((os == 1) & (os.shift() != 1), resampled['Low'].shift(length), 0)
+    series1 = pd.Series(top).shift(-length)
+    series2 = pd.Series(btm).shift(-length)
+    series1.index = resampled.index
+    series2.index = resampled.index
+    return [series1, series2]
 
 
-def smc(data, length, band):
-    swings_data_btm = swings(data, length)[1]
-    swings_data_top = swings(data, length)[0]
+def smc(data, length, band, timeframe):
+    swings_data_btm = swings(data, length, timeframe)[1]
+    swings_data_top = swings(data, length, timeframe)[0]
 
-    swings_data_btm.index = data.index
-    swings_data_top.index = data.index
     data["btmm"] = swings_data_btm
     data["btmm"].replace(0, np.nan, inplace=True)
     data["topp"] = swings_data_top
