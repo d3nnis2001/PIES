@@ -1,12 +1,5 @@
-longs vs shorts verggleichen || Hab es so gemacht das ihr selber angeben könnt ob Longs oder shorts behandelt werden oder beides
-asia session und ny session evt  || Gibt einfach die Zeiten ein und dann könnt ihr selber die backtests laufen lassen
-Trendfilter:WaveTrend 3D CoG slow oscilator and mirror || Fertig
 Orderblockfilter: Volume based buy and sell momentum by 2tm von Siyeon zum OB identifizieren (wenn das buy momentum und volumen nach einem ob steigen ob valide)
 ChoCh zusatz eventuell erforderlich zu dem OB indicator
 Grand Trend Forcast indicator eventuell sinnvoll basiert auf einem einfachen forecast model (noch abzuklären)
 News Filter für  high impact news (CPI PPI) um verluste zu minimieren 
 eventueller zusatzindikator als zusatzbestätigung für kauf/verkauf order(signal) WT3D auf niedrigerem Timeframe
-
-neu 26.05 tradingzeit auf 10 uhr utc anpassen 
-overnit swap programieren
-dennis fragen wie das mit den candels ist  für den sl nimmt er da die 6 te oder das hight der letzen 6
