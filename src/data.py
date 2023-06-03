@@ -5,7 +5,7 @@ import numpy as np
 import os
 import time
 
-polygonAPIkey = 'n5WUioGpm5YNuvJ0Bfn_No8nQHdfn_eP'
+polygonAPIkey = 'nliMWVES2a1PaYt9tLC6DqdTSzBFaWXc'
 client = RESTClient(api_key=polygonAPIkey)
 
 def getData(ticker, timespan, start, end):
