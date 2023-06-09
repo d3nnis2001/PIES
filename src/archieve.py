@@ -1,3 +1,5 @@
+import pandas as pd
+
 def supertrend(data, lookback=10, multiplier=2.5, band=0):
     high = data["High"]
     low = data["Low"]

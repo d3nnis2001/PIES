@@ -1,65 +1,53 @@
 import pandas as pd 
 import numpy as np
-from datetime import datetime
+from datetime import datetime, date
 import math
 
+import numpy as np
+
 def VWAP2(df: pd.DataFrame, band):
-    # Group by date
-    grouped = df.groupby(df.index.date)
+    # Calculate TP and TradedValue using vectorized operations
+    df['TP'] = (df['High'] + df['Low'] + df['Close']) / 3
+    df['TradedValue'] = df['TP'] * df['Volume']
 
-    # Initialize empty lists for the bands
-    vwap_list = []
-    upper_band1_list = []
-    lower_band1_list = []
-    upper_band2_list = []
-    lower_band2_list = []
-    upper_band3_list = []
-    lower_band3_list = []
+    # Calculate cumulative values using cumsum()
+    df['CumulativeTradedValue'] = df.groupby(df.index.date)['TradedValue'].cumsum()
+    df['CumulativeVolume'] = df.groupby(df.index.date)['Volume'].cumsum()
 
-    # Iterate over each group and calculate the bands
-    for _, group in grouped:
-        group['TP'] = (group['High'] + group['Low'] + group['Close']) / 3
-        group['TradedValue'] = group['TP'] * group['Volume']
-        group['CumulativeTradedValue'] = group['TradedValue'].cumsum()
-        group['CumulativeVolume'] = group['Volume'].cumsum()
-        group['VWAP'] = group['CumulativeTradedValue'] / group['CumulativeVolume']
+    # Calculate VWAP using vectorized division
+    df['VWAP'] = df['CumulativeTradedValue'] / df['CumulativeVolume']
 
-        group['TypicalPriceDev'] = (group['Close'] - group['VWAP'])**2
-        group['TPVDev'] = group['TypicalPriceDev'] * group['Volume']
-        group['CumTPVDev'] = group['TPVDev'].cumsum()
-        group['VWAPStdev'] = np.sqrt(group['CumTPVDev'] / group['CumulativeVolume'])
+    # Calculate TypicalPriceDev, TPVDev, and CumTPVDev using vectorized operations
+    df['TypicalPriceDev'] = (df['Close'] - df['VWAP'])**2
+    df['TPVDev'] = df['TypicalPriceDev'] * df['Volume']
+    df['CumTPVDev'] = df.groupby(df.index.date)['TPVDev'].cumsum()
 
-        # Calculate upper and lower bands for the group
-        group['UpperBand1'] = group['VWAP'] + 1 * group['VWAPStdev']
-        group['LowerBand1'] = group['VWAP'] - 1 * group['VWAPStdev']
-        group['UpperBand2'] = group['VWAP'] + 2 * group['VWAPStdev']
-        group['LowerBand2'] = group['VWAP'] - 2 * group['VWAPStdev']
-        group['UpperBand3'] = group['VWAP'] + 3 * group['VWAPStdev']
-        group['LowerBand3'] = group['VWAP'] - 3 * group['VWAPStdev']
+    # Calculate VWAPStdev using vectorized square root and division
+    df['VWAPStdev'] = np.sqrt(df['CumTPVDev'] / df['CumulativeVolume'])
 
-        # Append the bands to the respective lists
-        vwap_list.extend(group['VWAP'])
-        upper_band1_list.extend(group['UpperBand1'])
-        lower_band1_list.extend(group['LowerBand1'])
-        upper_band2_list.extend(group['UpperBand2'])
-        lower_band2_list.extend(group['LowerBand2'])
-        upper_band3_list.extend(group['UpperBand3'])
-        lower_band3_list.extend(group['LowerBand3'])
+    # Calculate upper and lower bands using vectorized operations
+    df['UpperBand1'] = df['VWAP'] + 1 * df['VWAPStdev']
+    df['LowerBand1'] = df['VWAP'] - 1 * df['VWAPStdev']
+    df['UpperBand2'] = df['VWAP'] + 2 * df['VWAPStdev']
+    df['LowerBand2'] = df['VWAP'] - 2 * df['VWAPStdev']
+    df['UpperBand3'] = df['VWAP'] + 3 * df['VWAPStdev']
+    df['LowerBand3'] = df['VWAP'] - 3 * df['VWAPStdev']
 
     if band == 0:
-        return pd.Series(vwap_list)
+        return df['VWAP']
     elif band == 1:
-        return pd.Series(upper_band1_list)
+        return df['UpperBand1']
     elif band == 2:
-        return pd.Series(lower_band1_list)
+        return df['LowerBand1']
     elif band == 3:
-        return pd.Series(upper_band2_list)
+        return df['UpperBand2']
     elif band == 4:
-        return pd.Series(lower_band2_list)
+        return df['LowerBand2']
     elif band == 5:
-        return pd.Series(upper_band3_list)
+        return df['UpperBand3']
     elif band == 6:
-        return pd.Series(lower_band3_list)
+        return df['LowerBand3']
+
 
 def supertrend(data, lookback, multiplier, band):
     high = data["High"]
