@@ -185,24 +185,24 @@ def smc(data, length, band, timeframe):
 # Wavetrend3D from tw
 
 
-def wavetrend3d(data: pd.Series, cog_window, timeframe, mirror):
+def wavetrend3d(data: pd.DataFrame, cog_window, cock , timeframe, mirror):
     s_length = 1.75
-    timechange = data.resample(timeframe).agg({'Open': 'first', 'High': 'max', 'Low': 'min', 'Close': 'last', 'Volume': 'sum'})
+    if(cock):
+        dataclose = cog(data["Close"], cog_window)
+    else:
+        dataclose = data['Close']
 
-    # Store the original index
-    original_index = data.index
+    timechange = dataclose.resample(timeframe).agg({'Close': 'last'})
 
-    signalSlow = getOscillator(cog(timechange["Close"], 6))
+    signalSlow = getOscillator(timechange["Close"])
 
-    # Create a DataFrame with the hourly data and original index
     hourly_data = pd.DataFrame(signalSlow, index=timechange.index)
 
-    # Map the hourly data back to the original 3-minute index
-    seriesSlow = hourly_data.asof(original_index)
+    seriesSlow = hourly_data.reindex(data.index, method='pad')
     seriesSlow = s_length * seriesSlow.squeeze()
     seriesSlowMirror = -seriesSlow
-    seriesSlowret = seriesSlow.fillna(0)
-    seriesSlowretMirror = seriesSlowMirror.fillna(0)
+    seriesSlowret = seriesSlow.ffill()
+    seriesSlowretMirror = seriesSlowMirror.ffill()
     if not mirror:
         return seriesSlowret
     elif mirror:
@@ -218,10 +218,10 @@ def cog(source, length):
     return -(num / sum).replace([np.inf, -np.inf], np.nan).fillna(0)
 
 def normalizeDeriv(src, quadraticMeanLength):
-    derivative = src - src.shift(2)  # Calculate the derivative
-    quadraticMean = np.sqrt(np.nan_to_num(np.sum(np.power(derivative, 2)) / quadraticMeanLength, nan=0))
-    normalizedDeriv = derivative / quadraticMean  # Calculate normalized derivative
-    series = pd.Series(index=src.index, data=normalizedDeriv*100)
+    derivative = src - src.shift(2)  
+    quadraticMean = math.sqrt(np.nansum(np.power(derivative, 2)) / quadraticMeanLength)
+    normalizedDeriv = derivative / quadraticMean  
+    series = pd.Series(index=src.index, data=normalizedDeriv)
     return series
 
 def tanh(_src):
@@ -244,7 +244,7 @@ def dualPoleFilter(_src, _lookback):
     series = pd.Series(_filter, index=_src.index)
     return series
 
-def getOscillator(data, smoothingFrequency=50, quadraticMeanLength=50):
+def getOscillator(data, smoothingFrequency=40, quadraticMeanLength=50):
     nDeriv = normalizeDeriv(data, quadraticMeanLength)
     hyperbolicTangent = tanh(nDeriv)
     result = dualPoleFilter(hyperbolicTangent, smoothingFrequency)
