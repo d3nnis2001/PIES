@@ -157,12 +157,11 @@ def swings(data, length, timeframe):
     os = pd.Series(os).fillna(method='ffill')
     top = np.where((os == 0) & (os.shift() != 0), resampled['High'].shift(length), 0)
     btm = np.where((os == 1) & (os.shift() != 1), resampled['Low'].shift(length), 0)
-    series1 = pd.Series(top).shift(-length)
-    series2 = pd.Series(btm).shift(-length)
+    series1 = pd.Series(top)
+    series2 = pd.Series(btm)
     series1.index = resampled.index
     series2.index = resampled.index
     return [series1, series2]
-
 
 def smc(data, length, band, timeframe):
     swings_data_btm = swings(data, length, timeframe)[1]
