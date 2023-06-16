@@ -2,6 +2,7 @@ import pandas as pd
 import numpy as np
 from datetime import datetime, date
 import math
+from scipy.signal import argrelextrema
 
 import numpy as np
 
@@ -267,3 +268,17 @@ def atr(data, window):
     atr = pd.Series(tr['tr']).rolling(window=window, min_periods=window).mean()
 
     return atr
+
+def pivotPoints(df, order, band):
+    if(band==1):
+        indexes = argrelextrema(df['High'].values, np.greater, order=order)[0]
+        listHigh = pd.Series(np.nan, index=df.index)
+        listHigh.iloc[indexes] = df["High"].iloc[indexes]
+        listHigh = listHigh.fillna(method='ffill')
+        return listHigh
+    elif(band==0):
+        indexeslower = argrelextrema(df['Low'].values, np.less, order=order)[0]
+        listLow = pd.Series(np.nan, index=df.index)
+        listLow.iloc[indexeslower] = df["Low"].iloc[indexeslower]
+        listLow = listLow.fillna(method="ffill")
+        return listLow
