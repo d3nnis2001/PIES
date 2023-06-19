@@ -282,3 +282,16 @@ def pivotPoints(df, order, band):
         listLow.iloc[indexeslower] = df["Low"].iloc[indexeslower]
         listLow = listLow.fillna(method="ffill")
         return listLow
+    
+def find_extrema(df, left_bars, right_bars):
+    left_max = df['High'].shift(1).rolling(window=left_bars, min_periods=1).max()
+    right_max = df['High'].shift(-right_bars).rolling(window=right_bars, min_periods=1).max()
+    left_min = df['Low'].shift(1).rolling(window=left_bars, min_periods=1).min()
+    right_min = df['Low'].shift(-right_bars).rolling(window=right_bars, min_periods=1).min()
+
+    df['higher_high'] = np.where((df['High'] > left_max) & (df['High'] > right_max), df['High'], np.nan)
+    df['lower_low'] = np.where((df['Low'] < left_min) & (df['Low'] < right_min), df['Low'], np.nan)
+    df['higher_low'] = np.where((df['Low'] > left_min) & (df['Low'] < right_min), df['Low'], np.nan)
+    df['lower_high'] = np.where((df['High'] < left_max) & (df['High'] > right_max), df['High'], np.nan)
+
+    return df[["higher_high", "lower_low", "higher_low", "lower_high"]]
