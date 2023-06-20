@@ -295,3 +295,69 @@ def find_extrema(df, left_bars, right_bars):
     df['lower_high'] = np.where((df['High'] < left_max) & (df['High'] > right_max), df['High'], np.nan)
 
     return df[["higher_high", "lower_low", "higher_low", "lower_high"]]
+
+def choch(df, left, right, timeframe="3T", sholong=0):
+    # Assign the columns to the dataframe
+    if timeframe != "3T":
+        df = df.resample(timeframe).agg({"Open": "first", "High": "max", "Low": "min", "Close": "last"})
+    
+    highs_lows = find_extrema(df, left, right)
+    df["higher_high"] = highs_lows["higher_high"]
+    df["lower_low"] = highs_lows["lower_low"]
+    df["higher_low"] = highs_lows["higher_low"]
+    df["lower_high"] = highs_lows["lower_high"]
+    
+    chochLong = np.zeros(len(df))
+    chochShort = np.zeros(len(df))
+    last_valh = 0
+    last_vall = 0
+    last_valhh = 0
+    last_valll = 0
+    last2_valhh = 0
+    last2_valll = 0
+    valh_candle = 0
+    vall_candle = 0
+    last_trade = 0  # Duration to wait until a new trade can be opened
+    candlecount = 0  # Overall counter throughout the whole process
+    
+    # Using numpy arrays is much faster than using pandas dataframes
+    lower_high = df["lower_high"].to_numpy()
+    higher_low = df["higher_low"].to_numpy()
+    higher_high = df["higher_high"].to_numpy()
+    lower_low = df["lower_low"].to_numpy()
+
+    close = df["Close"].to_numpy()
+    low = df["Low"].to_numpy()
+    high = df["High"].to_numpy()
+
+    for i in range(len(df)):
+        if higher_high[i] > 0:
+            last2_valhh = last_valhh
+            last_valhh = higher_high[i]
+        if lower_low[i] > 0:
+            last2_valll = last_valll
+            last_valll = lower_low[i]
+        if higher_low[i] > 0:
+            last_valh = higher_low[i]
+            valh_candle = candlecount
+        if lower_high[i] > 0:
+            last_vall = lower_high[i]
+            vall_candle = candlecount
+        if close[i] > last_vall and candlecount - vall_candle < 15 and candlecount - vall_candle > right and last_trade > 10 and low[i - 5] < high[i] and last2_valhh > last_valhh:
+            chochLong[i] = last_vall
+            last_vall = 0
+            vall_candle = 0
+            last_trade = 0
+        if close[i] < last_valh and candlecount - valh_candle < 15 and candlecount - valh_candle > right and last_trade > 10 and high[i - 5] > low[i] and last2_valhh < last_valhh:
+            chochShort[i] = last_valh
+            last_valh = 0
+            valh_candle = 0
+            last_trade = 0
+
+        last_trade += 1
+        candlecount += 1
+
+    if sholong == 0:
+        return pd.Series(chochShort, index=df.index)
+    else:
+        return pd.Series(chochLong, index=df.index)
