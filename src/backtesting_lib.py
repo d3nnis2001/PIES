@@ -125,3 +125,17 @@ def averageCalculater(results, pairList):
             "{:.4f}".format(averaged_profitFactor)
         ]
         writer.writerow(formatted_row)
+
+def format_data(dataname, timeframe="3T"):
+    daten = pd.read_csv(f"./data_directory/{dataname}.csv")
+    if "timefstamp" in daten.columns:
+        daten['timestamp'] = pd.to_datetime(daten['timestamp'], unit='ms')
+        daten['timestamp'] = pd.to_datetime(daten['timestamp'].apply(lambda x: x.strftime('%Y-%m-%d %H:%M:%S')))
+        daten.set_index('timestamp', inplace=True)
+    else:
+        daten.set_index("Date", inplace=True)
+        daten.index = pd.to_datetime(daten.index)
+    daten.drop_duplicates(inplace=True)
+    daten = daten.resample(timeframe).agg({'Open': 'first', 'High': 'max', 'Low': 'min', 'Close': 'last', 'Volume': 'sum'})
+    daten.dropna(inplace=True)
+    return daten

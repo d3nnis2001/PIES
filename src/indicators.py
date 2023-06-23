@@ -35,19 +35,19 @@ def VWAP2(df: pd.DataFrame, band):
     df['LowerBand3'] = df['VWAP'] - 3 * df['VWAPStdev']
 
     if band == 0:
-        return df['VWAP']
+        return df['VWAP'].values
     elif band == 1:
-        return df['UpperBand1']
+        return df['UpperBand1'].values
     elif band == 2:
-        return df['LowerBand1']
+        return df['LowerBand1'].values
     elif band == 3:
-        return df['UpperBand2']
+        return df['UpperBand2'].values
     elif band == 4:
-        return df['LowerBand2']
+        return df['LowerBand2'].values
     elif band == 5:
-        return df['UpperBand3']
+        return df['UpperBand3'].values
     elif band == 6:
-        return df['LowerBand3']
+        return df['LowerBand3'].values
 
 
 def supertrend(data, lookback, multiplier, band):
@@ -144,6 +144,8 @@ def supertrend(data, lookback, multiplier, band):
     dt = dt[~dt.index.duplicated()]
     upt = upt[~upt.index.duplicated()]
 
+    dt = dt.values
+    upt = upt.values
     if(band == 0):
         return dt
     elif(band == 1):
@@ -358,6 +360,18 @@ def choch(df, left, right, timeframe="3T", sholong=0):
         candlecount += 1
 
     if sholong == 0:
-        return pd.Series(chochShort, index=df.index)
+        return chochShort
     else:
-        return pd.Series(chochLong, index=df.index)
+        return chochLong
+    
+
+def vwma(price, volume, window):
+    price_series = pd.Series(price)
+    volume_series = pd.Series(volume)
+    
+    weighted_prices = price_series * volume_series
+    rolling_weighted_sum = weighted_prices.rolling(window).sum()
+    rolling_volume_sum = volume_series.rolling(window).sum()
+    
+    vwma = rolling_weighted_sum / rolling_volume_sum
+    return pd.Series(vwma, index=price_series.index)
