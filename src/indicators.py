@@ -2,6 +2,8 @@ import pandas as pd
 import numpy as np
 from datetime import datetime, date
 import math
+import numba
+from numba import jit
 from scipy.signal import argrelextrema
 
 import numpy as np
@@ -49,12 +51,62 @@ def VWAP2(df: pd.DataFrame, band):
     elif band == 6:
         return df['LowerBand3'].values
 
+@jit(nopython=True)
+def calculate_final_bands(final_bands_num, final_bands_numl, upper_band, lower_band, close):
+    for i in range(len(final_bands_num)):
+        if i == 0:
+            final_bands_num[i] = 0
+        else:
+            if (upper_band[i] < final_bands_num[i - 1]) or (close[i - 1] > final_bands_num[i - 1]):
+                final_bands_num[i] = upper_band[i]
+            else:
+                final_bands_num[i] = final_bands_num[i - 1]
+
+    for i in range(len(final_bands_numl)):
+        if i == 0:
+            final_bands_numl[i] = 0
+        else:
+            if (lower_band[i] > final_bands_numl[i - 1]) or (close[i - 1] < final_bands_numl[i - 1]):
+                final_bands_numl[i] = lower_band[i]
+            else:
+                final_bands_numl[i] = final_bands_numl[i - 1]
+
+    return final_bands_num, final_bands_numl
+
+@jit(nopython=True)
+def calculate_supertrend(supertrend_num, final_bands_num, final_bands_numl, close_np):
+    for i in range(1, len(supertrend_num)):
+        if i == 0:
+            supertrend_num[i] = 0
+        elif supertrend_num[i-1] == final_bands_num[i-1] and close_np[i] < final_bands_num[i]:
+            supertrend_num[i] = final_bands_num[i]
+        elif supertrend_num[i-1] == final_bands_num[i-1] and close_np[i] > final_bands_num[i]:
+            supertrend_num[i] = final_bands_numl[i]
+        elif supertrend_num[i-1] == final_bands_numl[i-1] and close_np[i] > final_bands_numl[i]:
+            supertrend_num[i] = final_bands_numl[i]
+        elif supertrend_num[i-1] == final_bands_numl[i-1] and close_np[i] < final_bands_numl[i]:
+            supertrend_num[i] = final_bands_num[i]
+
+    return supertrend_num
+
+@jit(nopython=True)
+def calculate_upt_dt(upt, dt, supertrend_num, close_np):
+    for i in range(len(supertrend_num)):
+        if close_np[i] > supertrend_num[i]:
+            upt[i] = supertrend_num[i]
+            dt[i] = np.nan
+        elif close_np[i] < supertrend_num[i]:
+            upt[i] = np.nan
+            dt[i] = supertrend_num[i]
+        else:
+            upt[i] = np.nan
+            dt[i] = np.nan
+    return upt, dt
 
 def supertrend(data, lookback, multiplier, band):
     high = data["High"]
     low = data["Low"]
     close = data["Close"]
-    # ATR
 
     tr1 = pd.DataFrame(high - low)
     tr2 = pd.DataFrame(abs(high - close.shift(1)))
@@ -69,87 +121,37 @@ def supertrend(data, lookback, multiplier, band):
     upper_band = (hl_avg + multiplier * atr).fillna(method="ffill").dropna()
     lower_band = (hl_avg - multiplier * atr).dropna()
 
-    # FINAL UPPER BAND
-    final_bands = pd.DataFrame(columns = ['upper', 'lower'], index=upper_band.index)
-    final_bands["upper"] = 0.0
-    final_bands["lower"] = 0.0
+    high = high.values
+    low = low.values
+    close = close.values
+    upper_band = upper_band.values
+    lower_band = lower_band.values
 
-    final_bands_num = final_bands["upper"].values
-    final_bands_numl = final_bands["lower"].values
 
-    # FINAL UPPER BAND
+    final_bands_num = np.zeros(len(upper_band))
+    final_bands_numl = np.zeros(len(upper_band))
 
-    for i in range(len(final_bands)):
-        if i == 0:
-            final_bands_num[i] = 0
-        else:
-            if (upper_band[i] < final_bands_num[i-1]) | (close[i-1] > final_bands_num[i-1]):
-                final_bands_num[i] = upper_band[i]
-            else:
-                final_bands_num[i] = final_bands_num[i-1]
-
-    # FINAL LOWER BAND
-
-    for i in range(len(final_bands)):
-        if i == 0:
-            final_bands_numl[i] = 0
-        else:
-            if (lower_band[i] > final_bands_numl[i-1]) | (close[i-1] < final_bands_numl[i-1]):
-                final_bands_numl[i] = lower_band[i]
-            else:
-                final_bands_numl[i] = final_bands_numl[i-1]
+    final_bands_num, final_bands_numl = calculate_final_bands(final_bands_num, final_bands_numl, upper_band, lower_band, close)
 
     # Supertrend
-
-    supertrend = pd.DataFrame(columns = ['supertrend'], index=upper_band.index)
-    supertrend["supertrend"] = 0.0
-
-    supertrend_num = supertrend["supertrend"].values
-
-    for i in range(1, len(supertrend)):
-        if i == 0:
-            supertrend_num[i] = 0
-        elif supertrend_num[i-1] == final_bands_num[i-1] and close[i] < final_bands_num[i]:
-            supertrend_num[i] = final_bands_num[i]
-        elif supertrend_num[i-1] == final_bands_num[i-1] and close[i] > final_bands_num[i]:
-            supertrend_num[i] = final_bands_numl[i]
-        elif supertrend_num[i-1] == final_bands_numl[i-1] and close[i] > final_bands_numl[i]:
-            supertrend_num[i] = final_bands_numl[i]
-        elif supertrend_num[i-1] == final_bands_numl[i-1] and close[i] < final_bands_numl[i]:
-            supertrend_num[i] = final_bands_num[i]
+    supertrend_num = np.zeros(len(upper_band))
+    supertrend_num = calculate_supertrend(supertrend_num, final_bands_num, final_bands_numl, close)
 
     # ST UPTREND/DOWNTREND
+    upt = np.empty(len(supertrend_num))
+    upt[:] = np.nan
+    dt = np.empty(len(supertrend_num))
+    dt[:] = np.nan
 
-    upt = []
-    dt = []
+    upt, dt = calculate_upt_dt(upt, dt, supertrend_num, close)
 
-    for i in range(len(supertrend)):
-        if close[i] > supertrend_num[i]:
-            upt.append(supertrend_num[i])
-            dt.append(np.nan)
-        elif close[i] < supertrend_num[i]:
-            upt.append(np.nan)
-            dt.append(supertrend_num[i])
-        else:
-            upt.append(np.nan)
-            dt.append(np.nan)
-
-    new_index = pd.date_range(start= data.index[0] , periods=1, freq='3min')
-    st = pd.Series(supertrend_num, index=data.index)
-    upt = pd.Series(upt, index=data.index)
-    dt = pd.Series(dt, index=data.index)
-    upt = pd.concat([pd.Series([np.nan], index=new_index), upt])
-    dt = pd.concat([pd.Series([np.nan], index=new_index), dt])
-
-    dt = dt[~dt.index.duplicated()]
-    upt = upt[~upt.index.duplicated()]
-
-    dt = dt.values
-    upt = upt.values
-    if(band == 0):
+    if band == 0:
         return dt
-    elif(band == 1):
+    elif band == 1:
         return upt
+
+
+
     
 def swings(data, length, timeframe):
     resampled = data.resample(timeframe).agg({'Open': 'first', 'High': 'max', 'Low': 'min', 'Close': 'last', 'Volume': 'sum'})
@@ -298,19 +300,10 @@ def find_extrema(df, left_bars, right_bars):
 
     return df[["higher_high", "lower_low", "higher_low", "lower_high"]]
 
-def choch(df, left, right, timeframe="3T", sholong=0):
-    # Assign the columns to the dataframe
-    if timeframe != "3T":
-        df = df.resample(timeframe).agg({"Open": "first", "High": "max", "Low": "min", "Close": "last"})
-    
-    highs_lows = find_extrema(df, left, right)
-    df["higher_high"] = highs_lows["higher_high"]
-    df["lower_low"] = highs_lows["lower_low"]
-    df["higher_low"] = highs_lows["higher_low"]
-    df["lower_high"] = highs_lows["lower_high"]
-    
-    chochLong = np.zeros(len(df))
-    chochShort = np.zeros(len(df))
+@numba.jit(nopython=True)
+def choch_numba(higher_high, lower_low, higher_low, lower_high, close, low, high, right):
+    chochLong = np.zeros(len(higher_high))
+    chochShort = np.zeros(len(higher_high))
     last_valh = 0
     last_vall = 0
     last_valhh = 0
@@ -319,20 +312,10 @@ def choch(df, left, right, timeframe="3T", sholong=0):
     last2_valll = 0
     valh_candle = 0
     vall_candle = 0
-    last_trade = 0  # Duration to wait until a new trade can be opened
-    candlecount = 0  # Overall counter throughout the whole process
-    
-    # Using numpy arrays is much faster than using pandas dataframes
-    lower_high = df["lower_high"].to_numpy()
-    higher_low = df["higher_low"].to_numpy()
-    higher_high = df["higher_high"].to_numpy()
-    lower_low = df["lower_low"].to_numpy()
+    last_trade = 0
+    candlecount = 0
 
-    close = df["Close"].to_numpy()
-    low = df["Low"].to_numpy()
-    high = df["High"].to_numpy()
-
-    for i in range(len(df)):
+    for i in range(len(higher_high)):
         if higher_high[i] > 0:
             last2_valhh = last_valhh
             last_valhh = higher_high[i]
@@ -359,11 +342,34 @@ def choch(df, left, right, timeframe="3T", sholong=0):
         last_trade += 1
         candlecount += 1
 
+    return chochShort, chochLong
+
+
+def choch(df, left, right, timeframe="3T", sholong=0):
+    if timeframe != "3T":
+        df = df.resample(timeframe).agg({"Open": "first", "High": "max", "Low": "min", "Close": "last"})
+    
+    highs_lows = find_extrema(df, left, right)
+    df["higher_high"] = highs_lows["higher_high"]
+    df["lower_low"] = highs_lows["lower_low"]
+    df["higher_low"] = highs_lows["higher_low"]
+    df["lower_high"] = highs_lows["lower_high"]
+    
+    lower_high = df["lower_high"].to_numpy()
+    higher_low = df["higher_low"].to_numpy()
+    higher_high = df["higher_high"].to_numpy()
+    lower_low = df["lower_low"].to_numpy()
+    close = df["Close"].to_numpy()
+    low = df["Low"].to_numpy()
+    high = df["High"].to_numpy()
+
+    chochShort, chochLong = choch_numba(higher_high, lower_low, higher_low, lower_high, close, low, high, right)
+
     if sholong == 0:
         return chochShort
     else:
         return chochLong
-    
+
 
 def vwma(price, volume, window):
     price_series = pd.Series(price)
