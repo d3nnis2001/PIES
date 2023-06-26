@@ -12,7 +12,7 @@ def evaluatePairs(pairList, strat):
         data.set_index('timestamp', inplace=True)
         data.drop_duplicates(inplace=True)
 
-        bt = Backtest(data, strat, cash=1000000, commission=0.00, exclusive_orders=True)
+        bt = Backtest(data, strat, cash=10000, commission=0.000045, exclusive_orders=True, margin=0.01)
         output = bt.run()
         results.append(output)
     averageCalculater(results, pairList)

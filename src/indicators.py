@@ -328,13 +328,13 @@ def choch_numba(higher_high, lower_low, higher_low, lower_high, close, low, high
         if lower_high[i] > 0:
             last_vall = lower_high[i]
             vall_candle = candlecount
-        if close[i] > last_vall and candlecount - vall_candle < 15 and candlecount - vall_candle > right and last_trade > 10 and low[i - 5] < high[i] and last2_valhh > last_valhh:
-            chochLong[i] = last_vall
+        if  high[i] > last_vall and close[i] < last_vall and candlecount - vall_candle < 10 and candlecount - vall_candle > right and last_trade > 10 and low[i - 5] < high[i] and last2_valhh > last_valhh:
+            chochLong[i] = close[i]
             last_vall = 0
             vall_candle = 0
             last_trade = 0
-        if close[i] < last_valh and candlecount - valh_candle < 15 and candlecount - valh_candle > right and last_trade > 10 and high[i - 5] > low[i] and last2_valhh < last_valhh:
-            chochShort[i] = last_valh
+        if  low[i] < last_valh and close[i] > last_valh and candlecount - valh_candle < 10 and candlecount - valh_candle > right and last_trade > 10 and high[i - 5] > low[i] and last2_valhh < last_valhh:
+            chochShort[i] = close[i]
             last_valh = 0
             valh_candle = 0
             last_trade = 0
