@@ -1,6 +1,8 @@
 import pandas as pd
 from backtesting import Backtest
 import csv
+import os
+import matplotlib.pyplot as plt
 import threading
 
 def evaluatePairs(pairList, strat):
@@ -139,3 +141,88 @@ def format_data(dataname, timeframe="3T"):
     daten = daten.resample(timeframe).agg({'Open': 'first', 'High': 'max', 'Low': 'min', 'Close': 'last', 'Volume': 'sum'})
     daten.dropna(inplace=True)
     return daten
+
+def profitFactorBars(stats):
+    statistics = stats['_trades']
+    statistics["Hour"] = statistics["EntryTime"].dt.hour
+    profits = statistics[statistics['PnL'] > 0].groupby('Hour')['PnL'].sum()
+    losses = statistics[statistics['PnL'] < 0].groupby('Hour')['PnL'].sum()
+    profitfactor = profits / abs(losses)
+    plt.figure(figsize=(20,10))
+    plt.bar(profitfactor.index, profitfactor, color='blue')
+    plt.axhline(y=1, color='red', linestyle='--')
+    plt.xlabel('Hour')
+    plt.ylabel('Profit Factor')
+    plt.show()
+
+def barsWinLoss(stats):    
+    statistics = stats['_trades']
+    statistics["Hold"] = statistics["ExitBar"] - statistics["EntryBar"]
+    print(f'Der durchschnittliche Trade wird {int(statistics["Hold"].mean())} Bars gehalten')
+    statistics["Hour"] = statistics["EntryTime"].dt.hour
+    statistics["Equity"] = 10000
+    for i in range(1, len(statistics)):
+        statistics["Equity"].iloc[i] = statistics["Equity"].iloc[i-1] + statistics["PnL"].iloc[i-1]
+    statistics["Procent"] = statistics["PnL"] / statistics["Equity"] * 100
+    groupedwins = statistics[statistics['Procent'] > 0].groupby('Hour')['Procent'].sum() / statistics[statistics['Procent'] > 0].groupby('Hour')['Procent'].count()
+    groupedlosses = statistics[statistics['Procent'] < 0].groupby('Hour')['Procent'].sum() / statistics[statistics['Procent'] < 0].groupby('Hour')['Procent'].count()
+    plt.figure(figsize=(20,10))
+    plt.bar(groupedwins.index, groupedwins, color='g')
+    plt.bar(groupedlosses.index, abs(groupedlosses), color='r')
+    plt.xlabel('Hour')
+    plt.ylabel('PnL in %')
+    plt.show()
+
+def profitYearly(stats):
+    statistics = stats['_trades']
+    statistics["Year"] = statistics["EntryTime"].dt.year
+    profits = statistics.groupby('Year')['PnL'].sum()
+    statistics["Equity"] = 10000
+    for i in range(1, len(statistics)):
+        statistics["Equity"].iloc[i] = statistics["Equity"].iloc[i-1] + statistics["PnL"].iloc[i-1]
+    grouped = statistics.groupby('Year')['Equity'].first()
+    procent = profits / grouped * 100
+    plt.figure(figsize=(20,10))
+    plt.bar(procent.index, procent, color='purple')
+    plt.xlabel('Year')
+    plt.ylabel('Profit in %')
+    plt.show()
+    return procent
+
+def profitMonthly(stats):
+    statistics = stats['_trades']
+    statistics["Month"] = statistics["EntryTime"].dt.month
+    profits = statistics.groupby('Month')['PnL'].sum()
+    statistics["Equity"] = 10000
+    for i in range(1, len(statistics)):
+        statistics["Equity"].iloc[i] = statistics["Equity"].iloc[i-1] + statistics["PnL"].iloc[i-1]
+    plt.figure(figsize=(20,10))
+    plt.bar(profits.index, profits, color='orange')
+    plt.xlabel('Month')
+    plt.ylabel('Profit in %')
+    plt.show()
+    return profits
+
+def profitMonthlyYearly(stats):
+    statistics = stats['_trades']
+    statistics["Month"] = statistics["EntryTime"].dt.month
+    statistics["Year"] = statistics["EntryTime"].dt.year
+    profits = statistics.groupby(["Year", "Month"])['PnL'].sum()
+    num_years = statistics['Year'].nunique()
+    first_year = statistics['Year'].min()
+
+    fig, axes = plt.subplots(nrows=num_years, ncols=1, figsize=(8, 4*num_years))
+
+    counter = 0
+
+    for i in range(first_year, first_year+num_years):
+        ax = axes[counter]
+        counter += 1
+        data = profits.loc[i]
+        ax.bar(data.index, data.values)
+        ax.set_title(f'PnL by Month ({i})')
+        ax.set_xlabel('Month')
+        ax.set_ylabel('PnL')
+        
+    plt.tight_layout()
+    return profits
