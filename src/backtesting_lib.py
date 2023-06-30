@@ -2,6 +2,7 @@ import pandas as pd
 from backtesting import Backtest
 import csv
 import os
+import numpy as np
 import matplotlib.pyplot as plt
 import threading
 
@@ -226,3 +227,25 @@ def profitMonthlyYearly(stats):
         
     plt.tight_layout()
     return profits
+
+def heikin_ashi(df):
+    heikin_ashi_df = pd.DataFrame(index=df.index, columns=['Open', 'High', 'Low', 'Close'])
+
+    heikin_ashi_df['Close'] = (df['Open'] + df['High'] + df['Low'] + df['Close']) / 4
+    heikin_ashi_df['Close'] = np.round(heikin_ashi_df['Close'], 5)
+
+    heikin_ashi_df['Open'] = (df['Open'].shift(1) + df['Close'].shift(1)) / 2
+    # Fill the NaN value in the first row with the original Open value
+    heikin_ashi_df['Open'].fillna(df['Open'], inplace=True)
+    heikin_ashi_df['Open'] = np.round(heikin_ashi_df['Open'], 5)
+
+    heikin_ashi_df['High'] = heikin_ashi_df.loc[:, ['Open', 'Close']].join(df['High']).max(axis=1)
+    heikin_ashi_df['High'] = np.round(heikin_ashi_df['High'], 5)
+
+    heikin_ashi_df['Low'] = heikin_ashi_df.loc[:, ['Open', 'Close']].join(df['Low']).min(axis=1)
+    heikin_ashi_df['Low'] = np.round(heikin_ashi_df['Low'], 5)
+
+    if 'Volume' in df.columns:
+        heikin_ashi_df['Volume'] = df['Volume']
+
+    return heikin_ashi_df
